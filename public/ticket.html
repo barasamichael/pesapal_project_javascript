@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Confirmation - CinemaSphere</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --primary: #E50914;
+            --primary-dark: #B81D24;
+            --secondary: #221F1F;
+            --light: #F5F5F1;
+            --gray: #EFEFEF;
+            --dark: #121212;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background-color: var(--dark);
+            color: var(--light);
+            min-height: 100vh;
+        }
+
+        .ticket-container {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border: 1px solid #333;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .ticket-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 2rem;
+            text-align: center;
+            color: white;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-completed {
+            background-color: #10B981;
+            color: white;
+        }
+
+        .status-pending {
+            background-color: #F59E0B;
+            color: white;
+        }
+
+        .status-failed {
+            background-color: #EF4444;
+            color: white;
+        }
+
+        .ticket-details {
+            padding: 2rem;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: #9CA3AF;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: var(--light);
+        }
+
+        .qr-code {
+            width: 120px;
+            height: 120px;
+            background: white;
+            margin: 0 auto;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            font-size: 0.75rem;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #333;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--light);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            border: 1px solid #333;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-secondary:hover {
+            background-color: #333;
+        }
+
+        .error-message {
+            background-color: #EF4444;
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .success-message {
+            background-color: #10B981;
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl">
+            <!-- Loading State -->
+            <div id="loading-state" class="text-center">
+                <div class="loading-spinner mb-4"></div>
+                <p class="text-gray-400">Loading ticket details...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="hidden text-center">
+                <div class="error-message">
+                    <h2 class="text-xl font-bold mb-2">Ticket Not Found</h2>
+                    <p id="error-message">The requested ticket could not be found.</p>
+                </div>
+                <a href="/" class="btn-primary">Back to Home</a>
+            </div>
+
+            <!-- Ticket Details -->
+            <div id="ticket-details" class="hidden">
+                <div class="ticket-container">
+                    <!-- Header -->
+                    <div class="ticket-header">
+                        <h1 class="text-2xl font-bold mb-2">CinemaSphere</h1>
+                        <p class="text-sm opacity-90">Movie Ticket Confirmation</p>
+                        <div class="mt-4">
+                            <span id="payment-status" class="status-badge status-completed">Confirmed</span>
+                        </div>
+                    </div>
+
+                    <!-- Ticket Details -->
+                    <div class="ticket-details">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <!-- Left Column -->
+                            <div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Ticket ID</span>
+                                    <span class="detail-value" id="ticket-id">#TKT001</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Movie</span>
+                                    <span class="detail-value" id="movie-title">Movie Title</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Customer</span>
+                                    <span class="detail-value" id="customer-name">Customer Name</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Phone</span>
+                                    <span class="detail-value" id="phone-number">+254712345678</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Quantity</span>
+                                    <span class="detail-value" id="quantity">1 ticket(s)</span>
+                                </div>
+                            </div>
+
+                            <!-- Right Column -->
+                            <div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Show Time</span>
+                                    <span class="detail-value" id="show-time">Date & Time</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Total Amount</span>
+                                    <span class="detail-value" id="total-amount">KSh 0</span>
+                                </div>
+                                <div class="detail-row" id="receipt-row">
+                                    <span class="detail-label">Receipt No.</span>
+                                    <span class="detail-value" id="receipt-number">N/A</span>
+                                </div>
+                                <div class="detail-row" id="payment-method-row">
+                                    <span class="detail-label">Payment Method</span>
+                                    <span class="detail-value" id="payment-method">Pesapal</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Booking Date</span>
+                                    <span class="detail-value" id="booking-date">Date</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- QR Code Section -->
+                        <div class="mt-8 text-center">
+                            <h3 class="text-lg font-semibold mb-4">Ticket QR Code</h3>
+                            <div class="qr-code">
+                                <div>
+                                    <div class="text-2xl mb-2">📱</div>
+                                    <div>Show this at the cinema</div>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-400 mt-2">Present this ticket at the cinema entrance</p>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="mt-8 flex justify-center space-x-4">
+                            <button onclick="window.print()" class="btn-secondary">
+                                🖨️ Print Ticket
+                            </button>
+                            <a href="/" class="btn-primary">Book Another Movie</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Success Message -->
+                <div id="success-message" class="hidden mt-4">
+                    <div class="success-message text-center">
+                        <h3 class="font-bold mb-1">🎉 Payment Successful!</h3>
+                        <p>Your ticket has been confirmed and is ready for use.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get ticket ID from URL
+            const pathParts = window.location.pathname.split('/');
+            const ticketId = pathParts[pathParts.length - 1];
+
+            console.log('🎫 Loading ticket details for ID:', ticketId);
+
+            // Check for success status in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const isSuccess = urlParams.get('status') === 'success';
+
+            if (ticketId && !isNaN(ticketId)) {
+                loadTicketDetails(ticketId, isSuccess);
+            } else {
+                showError('Invalid ticket ID');
+            }
+        });
+
+        async function loadTicketDetails(ticketId, showSuccess = false) {
+            try {
+                console.log('📡 Fetching ticket details...');
+                
+                const response = await fetch(`/api/tickets/${ticketId}`);
+                const data = await response.json();
+
+                console.log('📥 Ticket data received:', data);
+
+                if (response.ok && data.success) {
+                    displayTicketDetails(data.ticket, showSuccess);
+                } else {
+                    showError(data.error || 'Ticket not found');
+                }
+            } catch (error) {
+                console.error('❌ Error loading ticket:', error);
+                showError('Failed to load ticket details');
+            }
+        }
+
+        function displayTicketDetails(ticket, showSuccess = false) {
+            console.log('🎫 Displaying ticket details:', ticket);
+
+            // Hide loading state
+            document.getElementById('loading-state').classList.add('hidden');
+            
+            // Show ticket details
+            document.getElementById('ticket-details').classList.remove('hidden');
+
+            // Populate ticket information
+            document.getElementById('ticket-id').textContent = `#TKT${ticket.ticketId.toString().padStart(3, '0')}`;
+            document.getElementById('movie-title').textContent = ticket.movieTitle;
+            document.getElementById('customer-name').textContent = ticket.customerName;
+            document.getElementById('phone-number').textContent = ticket.phoneNumber;
+            document.getElementById('quantity').textContent = `${ticket.quantity} ticket(s)`;
+            document.getElementById('total-amount').textContent = `KSh ${ticket.totalAmount}`;
+
+            // Format and display show time
+            const showTime = new Date(ticket.showTime);
+            document.getElementById('show-time').textContent = showTime.toLocaleString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            // Format and display booking date
+            const bookingDate = new Date(ticket.dateCreated);
+            document.getElementById('booking-date').textContent = bookingDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            // Update payment status
+            const statusElement = document.getElementById('payment-status');
+            const receiptRow = document.getElementById('receipt-row');
+            const paymentMethodRow = document.getElementById('payment-method-row');
+
+            if (ticket.paymentStatus === 'Completed') {
+                statusElement.textContent = 'Confirmed';
+                statusElement.className = 'status-badge status-completed';
+                
+                if (ticket.receiptNumber) {
+                    document.getElementById('receipt-number').textContent = ticket.receiptNumber;
+                    receiptRow.style.display = 'flex';
+                } else {
+                    receiptRow.style.display = 'none';
+                }
+
+                if (ticket.paymentMethod) {
+                    document.getElementById('payment-method').textContent = ticket.paymentMethod;
+                    paymentMethodRow.style.display = 'flex';
+                } else {
+                    paymentMethodRow.style.display = 'none';
+                }
+
+                // Show success message if this is a redirect from successful payment
+                if (showSuccess) {
+                    document.getElementById('success-message').classList.remove('hidden');
+                }
+
+            } else if (ticket.paymentStatus === 'Pending') {
+                statusElement.textContent = 'Processing';
+                statusElement.className = 'status-badge status-pending';
+                receiptRow.style.display = 'none';
+                paymentMethodRow.style.display = 'none';
+
+            } else if (ticket.paymentStatus === 'Failed') {
+                statusElement.textContent = 'Payment Failed';
+                statusElement.className = 'status-badge status-failed';
+                receiptRow.style.display = 'none';
+                paymentMethodRow.style.display = 'none';
+            }
+
+            // Update page title
+            document.title = `Ticket #TKT${ticket.ticketId.toString().padStart(3, '0')} - CinemaSphere`;
+
+            console.log('✅ Ticket details displayed successfully');
+        }
+
+        function showError(message) {
+            console.error('❌ Showing error:', message);
+            
+            // Hide loading state
+            document.getElementById('loading-state').classList.add('hidden');
+            
+            // Show error state
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error-state').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
